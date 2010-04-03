@@ -1,8 +1,10 @@
-#!/bin/sh
+#!/usr/bin/env zsh
 ## Copyright © 2010 by Daniel Friesel <derf@derf.homelinux.org>
 ## License: WTFPL <http://sam.zoy.org/wtfpl>
 
-INPUT="${1}"
-OUTPUT="/tmp/fuze/$(basename ${1}).jpg"
+INPUT=${1}
+OUTPUT=/tmp/fuze/${INPUT:t:r}.jpg
 
-convert -resize 220x176 -quality 100 "${INPUT}" "${OUTPUT}"
+convert -resize 220x176 -quality 100 ${INPUT} ${OUTPUT}
+
+echo ${OUTPUT}
