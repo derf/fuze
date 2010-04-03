@@ -1,0 +1,23 @@
+#!/bin/sh
+## Copyright © 2010 by Daniel Friesel <derf@derf.homelinux.org>
+## License: WTFPL <http://sam.zoy.org/wtfpl>
+
+INPUT="${1}"
+TMPOUT="/tmp/fuze/${1}.tmp"
+OUTPUT='/tmp/fuze/$(basename ${1}).avi"
+
+mkdir -p /tmp/fuze
+
+mencoder -msglevel all=0:statusline=5 -ffourcc DX50 -ofps 20 -vf \
+pp=li,expand=:::::224/176,scale=224:176,harddup -ovc lavc -lavcopts \
+vcodec=mpeg4:vbitrate=683:vmax_b_frames=0:keyint=15:turbo:vpass=1 \
+-srate 44100 -af resample=44100:0:1,format=s16le -oac mp3lame \
+-lameopts cbr:br=128 "${INPUT}" -o "${TMPOUT}"
+
+mencoder -msglevel all=0:statusline=5 -ffourcc DX50 -ofps 20 -vf \
+pp=li,expand=:::::224/176,scale=224:176,harddup -ovc lavc -lavcopts \
+vcodec=mpeg4:vbitrate=683:vmax_b_frames=0:keyint=15:vpass=2 -srate 44100 \
+-af resample=44100:0:1,format=s16le -oac mp3lame -lameopts cbr:br=128 \
+"${INPUT}" -o "${TMPOUT}"
+
+fuzemux "${TMPOUT}" "${OUTPUT}"
