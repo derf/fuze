@@ -5,6 +5,8 @@
 INPUT=${1}
 OUTPUT=/tmp/fuze/${INPUT:t:r}.jpg
 
+mkdir -p /tmp/fuze
+
 convert -resize 220x176 -quality 100 ${INPUT} ${OUTPUT}
 
 echo ${OUTPUT}
