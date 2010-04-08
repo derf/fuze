@@ -2,6 +2,8 @@
 ## Copyright © 2010 by Daniel Friesel <derf@derf.homelinux.org>
 ## License: WTFPL <http://sam.zoy.org/wtfpl>
 
+set -e
+
 INPUT=${1}
 TMPOUT=/tmp/fuze/${INPUT:t:r}.tmp
 OUTPUT=/tmp/fuze/${INPUT:t:r}.avi
