@@ -7,48 +7,25 @@ set -e
 INPUT=${1}
 TMPOUT=/tmp/fuze/${INPUT:t:r}.tmp
 OUTPUT=/tmp/fuze/${INPUT:t:r}.avi
-DESTDIR=/data/derf/sansa-tmp/VIDEOS
 
 mkdir -p /tmp/fuze
 
-echo '--- encoding, stage 1/2'
+echo '--- encoding, stage 1/2' >&2
 mencoder -msglevel all=0:statusline=5 -ffourcc DX50 -ofps 20 -vf \
 pp=li,expand=:::::224/176,scale=224:176,harddup -ovc lavc -lavcopts \
 vcodec=mpeg4:vbitrate=683:vmax_b_frames=0:keyint=15:turbo:vpass=1 \
 -srate 44100 -af resample=44100:0:1,format=s16le -oac mp3lame \
--lameopts cbr:br=128 ${INPUT} -o ${TMPOUT}
+-lameopts cbr:br=128 ${INPUT} -o ${TMPOUT} >&2
 
 echo '--- encoding, stage 2/2'
 mencoder -msglevel all=0:statusline=5 -ffourcc DX50 -ofps 20 -vf \
 pp=li,expand=:::::224/176,scale=224:176,harddup -ovc lavc -lavcopts \
 vcodec=mpeg4:vbitrate=683:vmax_b_frames=0:keyint=15:vpass=2 -srate 44100 \
 -af resample=44100:0:1,format=s16le -oac mp3lame -lameopts cbr:br=128 \
-${INPUT} -o ${TMPOUT}
+${INPUT} -o ${TMPOUT} >&2
 
-echo '--- muxing'
-fuzemux ${TMPOUT} ${OUTPUT}
+echo '--- muxing' >&2
+fuzemux ${TMPOUT} ${OUTPUT} >&2
 rm ${TMPOUT}
 
-if [[ ${HOST} != aneurysm ]] && ping -c 1 derf.homelinux.org &> /dev/null; then
-	echo '--- copying to aneurysm'
-	scp ${OUTPUT} aneurysm:${DESTDIR}
-
-	# Encoding takes a long time. So it's better to be safe than sorry in
-	# this case
-
-	echo '--- verifying copy'
-	if [[ -n ${commands[sha512sum]} \
-		&& ${$(sha512sum ${OUTPUT})[1]} \
-		== ${$(ssh aneurysm "sha512sum ${DESTDIR}/${(q)OUTPUT:t}")[1]} ]] \
-	{
-		echo '--- OK, removing local file'
-		rm ${OUTPUT}
-	} else {
-		echo '--- failed'
-		echo
-		echo ${OUTPUT}
-	}
-else
-	echo
-	echo ${OUTPUT}
-fi
+echo ${OUTPUT}
