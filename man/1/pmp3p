@@ -1,0 +1,35 @@
+.Dd April 14, 2010
+.Dt PMP3P 1
+.Os
+.
+.Sh NAME
+.Nm pmp3p
+.Nd populate MP3 player / portable music player
+.
+.Sh SYNOPSIS
+.Nm
+.Op Cm --remove
+.Ar directory
+.Ar
+.
+.Sh DESCRIPTION
+.Nm
+is a simple script to put music files on MP3 players.
+Note the "MP3": Any non-mp3 audio file will be converted to mp3 before copying.
+So, don't use this if your player supports flac and ogg as well.
+.Pp
+It will convert all
+.Ar files
+to MP3 and put them into
+.Ar directory .
+The music will be structured as
+.Pa artist/album/track.mp3 .
+.Pp
+Tags are preserved if possible.
+.
+.Sh AUTHOR
+Daniel Friesel
+.Pq derf@derf.homelinux.org
+.
+.Sh LICENSE
+  0. You just DO WHAT THE FUCK YOU WANT TO.
