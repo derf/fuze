@@ -1,0 +1,194 @@
+#!/usr/bin/env zsh
+#
+# pmp3p - "Populate" MP3 Player
+#
+# Copyright © 2009, 2010 by Daniel Friesel <derf@derf.homelinux.org>
+# License: WTFPL <http://sam.zoy.org/wtfpl>
+#
+# Usage: pmp3p [--remove] <basedir> <files ...>
+#
+# Requires: atag/arename, oggdec, flac, lame
+# For playlist generation: sed, unix2dos
+#
+# pmp3p will put all files into basedir, more specifically to
+# basedir/artist/album/id_title.mp3 .
+#
+# If the --remove option is specified, pmp3p will try to remove files which
+# are present in basedir but not mentioned on the commandline
+#
+# I use it like this:
+# I put symlinks to everything I want on my music player into
+# ~/lib/audio/.mp3-player, then regularly call
+#    cd ~/lib/audio/.mp3-player
+#    pmp3p --remove /data/derf/sansa-tmp/MUSIC ***/*(-.)
+#
+# /data/derf/sansa-tmp is then later (whenever the player is connected for
+# recharing) synced onto it.
+# Of course, you can also directly encode to your music player.
+#
+# Playlist support:
+# This is very specific to the "Sansa Fuze", for other players it's probably
+# useless.
+# Put glob expressions (one per line) to the songs you want in the playlist
+# into .playlists/playlist_name .
+# pmp3p will then expand those expressions and put the correct filenames into
+# the playlist.
+# Example:
+#    remnant ~/l/a/.mp3-player > cat .playlists/chill
+#    bluechel/*/*
+#    schiller/*
+#
+# PS: Yes, I know that the Sansa Fuze also supports flac and ogg.
+# And of course: No warranty for lost data or whatever else might happen.
+
+autoload atag
+typeset IFS=$'\n'
+typeset -i bitrate=196
+
+# If mp3info is installed, all MP3s with a bitrate > max_bitrate will be
+# re-encoded to preserve space
+typeset -i max_bitrate=260
+typeset -a -U files files_done
+typeset -A tags rtags
+typeset result
+typeset tmp_wav=/tmp/tempfile.wav tmp_mp3=/tmp/tempfile.mp3
+typeset -i remove
+
+while [[ ${1} == --* ]] {
+	case ${1} in
+		--remove) remove=1 ;;
+	esac
+	shift
+}
+
+typeset basedir=${1}
+shift
+files=(${*})
+
+function filestate {
+	typeset color=${1} message=${2}
+	shift 2
+	print -P -f '%s%-4s%s [%-15s - %-25s] %s\n' "%F{${color}}" ${message} \
+	'%F{default}' ${rtags[artist][1,15]} ${rtags[tracktitle][1,25]} ${file}
+}
+
+function prepare_tags {
+	rtags=(
+		artist     unknown
+		album      unknown
+		tracktitle unknown
+		tracknumber 00
+	)
+	tags=()
+	result=
+}
+
+function read_tags {
+	typeset cfile=${1}
+	atag ${cfile} -e
+	rtags=(
+		artist      "${_ar}"
+		album       "${_al}"
+		tracktitle  "${_tt}"
+		tracknumber "${_tnp}"
+	)
+	tags[artist]=${(L)rtags[artist]//[^[:alnum:]]/_}
+	tags[album]=${(L)rtags[album]//[^[:alnum:]]/_}
+	tags[tracktitle]=${(L)rtags[tracktitle]//[^[:alnum:]]/_}
+	tags[tracknumber]=$(printf "%02d" ${rtags[tracknumber]//[^[:digit:]]})
+
+	if [[ -n ${tags[artist]} && -n ${tags[tracktitle]} ]] {
+		result=${basedir}/${tags[artist]}/${tags[album]}/${tags[tracknumber]}_${tags[tracktitle]}.mp3
+	} else {
+		result=${basedir}/unknown/${cfile:t:r}.mp3
+	}
+}
+
+if [[ ! -d ${basedir} ]] {
+	echo "Cannot use ${basedir}" >&2
+	exit 1
+}
+
+if ((remove)) {
+	i=0
+	for file in ${files}; {
+		echo -n "\rChecking for removed files... $((++i))/${#files}"
+		prepare_tags
+		read_tags ${file}
+		files_done+=${result}
+	}
+	echo
+
+	for file in ${basedir}/*/*/*(.N); {
+		if [[ ${files_done[(I)$file]} == 0 ]] {
+			prepare_tags
+			read_tags ${file}
+			filestate red rm
+			rm -f ${file}
+		}
+	}
+}
+
+echo "Creating playlists..."
+
+for p in .playlists/*(.N); {
+	playlist=()
+	echo "\t${p:t}"
+
+	while read line; do
+		playlist+=(${~line})
+	done < ${p}
+
+	for file in ${playlist}; {
+		prepare_tags
+		read_tags ${file}
+		echo ${result#${basedir}/}
+	} |\
+		sed 's:/:\\:g' > ${basedir}/${p:t}.m3u
+	unix2dos -q ${basedir}/${p:t}.m3u
+}
+
+
+mkdir -p ${basedir}/unknown
+
+for file in ${files}; {
+	typeset filetype=${file:e:l}
+	rm -f ${tmp_wav} ${tmp_mp3}
+	prepare_tags
+	read_tags ${file}
+
+	if [[ -r ${result} ]] {
+		filestate yellow skip
+		continue
+	}
+
+	filestate green lame
+
+	case ${filetype} in
+		ogg)  oggdec --quiet -o ${tmp_wav} ${file} > /dev/null ;;
+		mp3)  cp ${file} ${tmp_mp3} > /dev/null ;;
+		flac) flac --silent --decode -o ${tmp_wav} ${file} > /dev/null ;;
+		*)    echo "Unrecognized format: ${file}" >&2; continue ;
+	esac
+
+	if [[ -r ${tmp_wav} && ! -r ${tmp_mp3} ]] {
+
+		lame --quiet --ta "${rtags[artist]}" --tt "${rtags[tracktitle]}" \
+		--tl "${rtags[album]}" --ty "${rtags[year]}" -h -b ${bitrate} \
+		${tmp_wav} ${tmp_mp3}
+
+	} elif [[ ${filetype} == mp3 && -n ${commands[mp3info]} \
+		&& $(mp3info -r m -p '%r' ${file}) -gt ${max_bitrate} ]] \
+	{
+
+		lame --quiet --mp3input --ta "${rtags[artist]}" \
+		--tt "${rtags[tracktitle]}" --tl "${rtags[album]}" \
+		--ty "${rtags[year]}" -h -b ${bitrate} ${file} ${tmp_mp3}
+
+	}
+
+	if [[ -r ${tmp_mp3} ]] {
+		mkdir -p ${basedir}/${tags[artist]}/${tags[album]}
+		cp ${tmp_mp3} ${result}
+	}
+}
