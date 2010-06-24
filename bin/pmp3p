@@ -92,9 +92,9 @@ function read_tags {
 		tracktitle  "${_tt}"
 		tracknumber "${_tnp}"
 	)
-	tags[artist]=${(L)rtags[artist]//[^[:alnum:]]/_}
-	tags[album]=${(L)rtags[album]//[^[:alnum:]]/_}
-	tags[tracktitle]=${(L)rtags[tracktitle]//[^[:alnum:]]/_}
+	tags[artist]=${(L)rtags[artist]//[^A-Za-z0-9_-]/_}
+	tags[album]=${(L)rtags[album]//[^A-Za-z0-9_-]/_}
+	tags[tracktitle]=${(L)rtags[tracktitle]//[^A-Za-z0-9_-]/_}
 	tags[tracknumber]=$(printf "%02d" ${rtags[tracknumber]//[^[:digit:]]})
 
 	if [[ -n ${tags[artist]} && -n ${tags[tracktitle]} ]] {
