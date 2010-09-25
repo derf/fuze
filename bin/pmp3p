@@ -43,11 +43,11 @@
 
 autoload atag
 typeset IFS=$'\n'
-typeset -i bitrate=196
+typeset -i bitrate=256
 
 # If mp3info is installed, all MP3s with a bitrate > max_bitrate will be
 # re-encoded to preserve space
-typeset -i max_bitrate=260
+typeset -i max_bitrate=360
 typeset -a -U files files_done
 typeset -A tags rtags
 typeset result
